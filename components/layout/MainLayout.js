@@ -16,9 +16,9 @@ export default function MainLayout({ children }) {
 
   const menuItems = [
     { icon: Images, label: "Photos", href: "/photos" },
-    { icon: Album, label: "Albums", href: "/albums" },
     { icon: Heart, label: "Favorites", href: "/favorites" },
-    { icon: Search, label: "Search", href: "/search" },
+    { icon: Album, label: "Albums", href: "/albums" },
+    { icon: Search, label: "Explore", href: "/explore" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
