@@ -9,15 +9,54 @@ export default function NewUserModal({ isOpen, onClose, onSubmit }) {
     confirmPassword: ''
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+  
     if (userData.password !== userData.confirmPassword) {
       alert("Passwords don't match!");
       return;
     }
-    onSubmit(userData);
-    setUserData({ name: '', password: '', confirmPassword: '' });
+  
+    try {
+      const response = await fetch(`${process.env.BACKEND_URL}/api/user/create`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: new URLSearchParams({
+          username: userData.name,
+          password: userData.password
+        })
+      });
+  
+      const result = await response.json();
+  
+      if (result === 'true') {
+        alert('User created successfully!');
+        setUserData({ name: '', password: '', confirmPassword: '' });
+        onClose(); // Close the modal on success
+      } else {
+        alert(result); // Show error message from the backend
+      }
+    } catch (error) {
+      console.error('Error creating user:', error);
+      alert('Something went wrong. Please try again.');
+    }
   };
+
+
+  // OLD Code
+
+  // const handleSubmit = (e) => {
+  //   e.preventDefault();
+  //   if (userData.password !== userData.confirmPassword) {
+  //     alert("Passwords don't match!");
+  //     return;
+  //   }
+  //   onSubmit(userData);
+  //   setUserData({ name: '', password: '', confirmPassword: '' });
+  // };
+  
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
