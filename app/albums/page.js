@@ -1,21 +1,16 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import AlbumCard from "@/components/albums/AlbumCard";
 import CreateAlbumModal from "@/components/albums/CreateAlbumModal";
 import { Plus } from "lucide-react";
 import { dummyPhotosByDate } from "@/data/photos";
 import { v4 as uuidv4 } from "uuid";
+import { useGallery } from "@/store/GalleryStore";
 
 export default function AlbumsPage() {
-  const [albums, setAlbums] = useState([]);
+  const { albums, addAlbum, deleteAlbum } = useGallery();
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
-
-  // Load albums from localStorage on mount
-  useEffect(() => {
-    const storedAlbums = JSON.parse(localStorage.getItem("albums") || "[]");
-    setAlbums(storedAlbums);
-  }, []);
 
   const handleCreateAlbum = ({ title, description, photoIds }) => {
     const newAlbum = {
@@ -28,15 +23,11 @@ export default function AlbumsPage() {
       createdAt: new Date().toISOString(),
     };
 
-    const updatedAlbums = [...albums, newAlbum];
-    setAlbums(updatedAlbums);
-    localStorage.setItem("albums", JSON.stringify(updatedAlbums));
+    addAlbum(newAlbum);
   };
 
   const handleDeleteAlbum = (albumId) => {
-    const updatedAlbums = albums.filter((album) => album.id !== albumId);
-    setAlbums(updatedAlbums);
-    localStorage.setItem("albums", JSON.stringify(updatedAlbums));
+    deleteAlbum(albumId);
   };
 
   // Get all available photos

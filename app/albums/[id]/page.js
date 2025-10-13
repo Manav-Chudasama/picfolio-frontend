@@ -1,31 +1,25 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import PhotoGrid from "@/components/photos/PhotoGrid";
 import { ArrowLeft, Trash2 } from "lucide-react";
 import Link from "next/link";
+import { useGallery } from "@/store/GalleryStore";
 
 export default function AlbumDetailPage() {
   const params = useParams();
   const router = useRouter();
+  const { getAlbumById, deleteAlbum, favorites, toggleFavorite } = useGallery();
   const [album, setAlbum] = useState(null);
-  const [favorites, setFavorites] = useState([]);
 
   useEffect(() => {
-    const albums = JSON.parse(localStorage.getItem("albums") || "[]");
-    const foundAlbum = albums.find((a) => a.id === params.id);
-    setAlbum(foundAlbum);
-
-    const storedFavorites = JSON.parse(localStorage.getItem("favorites") || "[]");
-    setFavorites(storedFavorites);
-  }, [params.id]);
+    setAlbum(getAlbumById(params.id));
+  }, [params.id, getAlbumById]);
 
   const handleDelete = () => {
     if (window.confirm("Are you sure you want to delete this album?")) {
-      const albums = JSON.parse(localStorage.getItem("albums") || "[]");
-      const updatedAlbums = albums.filter((a) => a.id !== params.id);
-      localStorage.setItem("albums", JSON.stringify(updatedAlbums));
+      deleteAlbum(params.id);
       router.push("/albums");
     }
   };
@@ -74,9 +68,9 @@ export default function AlbumDetailPage() {
           selectedPhotos={[]}
           onSelectPhoto={() => {}}
           favorites={favorites}
-          onToggleFavorite={() => {}}
+          onToggleFavorite={toggleFavorite}
         />
       </div>
     </MainLayout>
   );
-} 
+}

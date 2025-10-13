@@ -10,6 +10,7 @@ export default function PhotoGrid({
   isAllSelected,
   favorites,
   onToggleFavorite,
+  onOpenPhoto,
 }) {
   const [hoveredPhoto, setHoveredPhoto] = useState(null);
 
@@ -36,7 +37,10 @@ export default function PhotoGrid({
                 }`}
             >
               <button
-                onClick={() => onSelectPhoto(photo.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onSelectPhoto(photo.id);
+                }}
                 className={`rounded-full p-1 transition-colors
                   ${
                     isSelected
@@ -58,7 +62,10 @@ export default function PhotoGrid({
                 }`}
             >
               <button
-                onClick={() => onToggleFavorite(photo.id)}
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onToggleFavorite(photo.id);
+                }}
                 className={`rounded-full p-1.5 transition-colors
                   ${
                     isFavorite
@@ -73,7 +80,10 @@ export default function PhotoGrid({
               </button>
             </div>
 
-            <div className="aspect-square relative">
+            <div
+              className="aspect-square relative cursor-zoom-in"
+              onClick={() => onOpenPhoto && onOpenPhoto(photo)}
+            >
               <Image
                 src={photo.url}
                 alt={photo.title || "Photo"}

@@ -1,22 +1,15 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import PhotoGrid from "@/components/photos/PhotoGrid";
 import PhotoToolbar from "@/components/photos/PhotoToolbar";
 import { dummyPhotosByDate } from "@/data/photos"; // We'll need to move the data to a separate file
+import { useGallery } from "@/store/GalleryStore";
 
 export default function FavoritesPage() {
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [favorites, setFavorites] = useState([]);
-
-  // Initialize favorites from localStorage after component mounts
-  useEffect(() => {
-    const storedFavorites = JSON.parse(
-      localStorage.getItem("favorites") || "[]"
-    );
-    setFavorites(storedFavorites);
-  }, []);
+  const { favorites, toggleFavorite, addFavorites } = useGallery();
 
   // Get all photos from dummyPhotosByDate that are in favorites
   const favoritePhotos = dummyPhotosByDate
@@ -37,18 +30,12 @@ export default function FavoritesPage() {
   };
 
   const handleToggleFavorite = (photoId) => {
-    const newFavorites = favorites.includes(photoId)
-      ? favorites.filter((id) => id !== photoId)
-      : [...favorites, photoId];
-    setFavorites(newFavorites);
-    localStorage.setItem("favorites", JSON.stringify(newFavorites));
+    toggleFavorite(photoId);
   };
 
   const handleAddSelectedToFavorites = () => {
-    const newFavorites = [...new Set([...favorites, ...selectedPhotos])];
-    setFavorites(newFavorites);
-    localStorage.setItem("favorites", JSON.stringify(newFavorites));
-    setSelectedPhotos([]); // Clear selection after adding to favorites
+    addFavorites(selectedPhotos);
+    setSelectedPhotos([]);
   };
 
   return (

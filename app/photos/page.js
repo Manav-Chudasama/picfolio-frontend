@@ -1,24 +1,27 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import PhotoGrid from "@/components/photos/PhotoGrid";
 import PhotoToolbar from "@/components/photos/PhotoToolbar";
 import DateSection from "@/components/photos/DateSection";
 import { dummyPhotosByDate } from "@/data/photos";
 import { v4 as uuidv4 } from "uuid";
+import { useGallery } from "@/store/GalleryStore";
+import Lightbox from "@/components/photos/Lightbox";
+import { useState as _useState } from "react";
 
 export default function PhotosPage() {
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const [favorites, setFavorites] = useState([]);
+  const { favorites, toggleFavorite, addFavorites, addAlbum } = useGallery();
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxPhotos, setLightboxPhotos] = useState([]);
+  const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
+  const [visibleGroups, setVisibleGroups] = useState(2);
 
-  // Initialize favorites from localStorage after component mounts
-  useEffect(() => {
-    const storedFavorites = JSON.parse(
-      localStorage.getItem("favorites") || "[]"
-    );
-    setFavorites(storedFavorites);
-  }, []);
+  const loadMore = () => {
+    setVisibleGroups((v) => Math.min(v + 2, dummyPhotosByDate.length));
+  };
 
   const handleSelectPhoto = (photoId) => {
     setSelectedPhotos((prev) =>
@@ -54,18 +57,12 @@ export default function PhotosPage() {
   };
 
   const handleToggleFavorite = (photoId) => {
-    const newFavorites = favorites.includes(photoId)
-      ? favorites.filter((id) => id !== photoId)
-      : [...favorites, photoId];
-    setFavorites(newFavorites);
-    localStorage.setItem("favorites", JSON.stringify(newFavorites));
+    toggleFavorite(photoId);
   };
 
   const handleAddSelectedToFavorites = () => {
-    const newFavorites = [...new Set([...favorites, ...selectedPhotos])];
-    setFavorites(newFavorites);
-    localStorage.setItem("favorites", JSON.stringify(newFavorites));
-    setSelectedPhotos([]); // Clear selection after adding to favorites
+    addFavorites(selectedPhotos);
+    setSelectedPhotos([]);
   };
 
   // Filter photos based on search query
@@ -76,7 +73,8 @@ export default function PhotosPage() {
         photo.title.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     }))
-    .filter((group) => group.photos.length > 0);
+    .filter((group) => group.photos.length > 0)
+    .slice(0, visibleGroups);
 
   const handleUploadPhotos = async (files) => {
     // Here you would typically upload the files to your server
@@ -117,13 +115,15 @@ export default function PhotosPage() {
       createdAt: new Date().toISOString(),
     };
 
-    // Get existing albums and add the new one
-    const existingAlbums = JSON.parse(localStorage.getItem("albums") || "[]");
-    const updatedAlbums = [...existingAlbums, newAlbum];
-    localStorage.setItem("albums", JSON.stringify(updatedAlbums));
-
-    // Clear selection after creating album
+    addAlbum(newAlbum);
     setSelectedPhotos([]);
+  };
+
+  const openLightbox = (photo, photos) => {
+    setLightboxPhotos(photos);
+    const idx = photos.findIndex((p) => p.id === photo.id);
+    setLightboxStartIndex(Math.max(0, idx));
+    setLightboxOpen(true);
   };
 
   return (
@@ -181,6 +181,7 @@ export default function PhotosPage() {
                   )}
                   favorites={favorites}
                   onToggleFavorite={handleToggleFavorite}
+                  onOpenPhoto={(photo) => openLightbox(photo, group.photos)}
                 />
               </DateSection>
             );
@@ -194,8 +195,28 @@ export default function PhotosPage() {
               </p>
             </div>
           )}
+
+          {visibleGroups < dummyPhotosByDate.length && (
+            <div className="flex justify-center py-6">
+              <button
+                onClick={loadMore}
+                className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+              >
+                Load more
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      <Lightbox
+        isOpen={lightboxOpen}
+        onClose={() => setLightboxOpen(false)}
+        photos={lightboxPhotos}
+        startIndex={lightboxStartIndex}
+        favorites={favorites}
+        onToggleFavorite={handleToggleFavorite}
+      />
     </MainLayout>
   );
 }
