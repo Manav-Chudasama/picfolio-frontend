@@ -3,10 +3,15 @@ import { useState, useCallback } from "react";
 import { Dialog } from "@headlessui/react";
 import { Upload, X, Image as ImageIcon } from "lucide-react";
 import { useDropzone } from "react-dropzone";
+import { API_ENDPOINTS } from "../../config/api";
+import { useSession } from "../providers/SessionProvider";
 
 export default function UploadModal({ isOpen, onClose, onUpload }) {
+  const { currentUser } = useSession();
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState({});
+  const [error, setError] = useState("");
 
   const onDrop = useCallback((acceptedFiles) => {
     // Create preview URLs for the files
@@ -22,7 +27,18 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
     accept: {
-      "image/*": [".jpeg", ".jpg", ".png", ".gif", ".webp"],
+      "image/*": [
+        ".jpeg",
+        ".jpg",
+        ".png",
+        ".gif",
+        ".webp",
+        ".avif",
+        ".heic",
+        ".ttif",
+        ".jfif",
+      ],
+      "video/*": [".mp4", ".mov", ".avi", ".webm", ".flv", ".wmv", ".mkv"],
     },
   });
 
@@ -34,16 +50,58 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
   };
 
   const handleUpload = async () => {
+    if (!currentUser) {
+      setError("No user logged in");
+      return;
+    }
+
     setUploading(true);
+    setError("");
+    setUploadProgress({});
+
     try {
-      // Here you would typically upload the files to your server
-      // For now, we'll just simulate an upload
-      await new Promise((resolve) => setTimeout(resolve, 2000));
-      onUpload(files);
+      const uploadPromises = files.map(async (fileItem, index) => {
+        const formData = new FormData();
+        formData.append("username", currentUser);
+        formData.append("asset", fileItem.file);
+        formData.append("compress", "true"); // Enable compression
+
+        try {
+          const response = await fetch(API_ENDPOINTS.uploadAsset(), {
+            method: "POST",
+            body: formData,
+          });
+
+          if (!response.ok) {
+            const errorData = await response.json();
+            throw new Error(
+              errorData.error || `Upload failed for ${fileItem.name}`
+            );
+          }
+
+          const result = await response.json();
+          setUploadProgress((prev) => ({ ...prev, [index]: 100 }));
+          return { success: true, file: fileItem.name, result };
+        } catch (error) {
+          setUploadProgress((prev) => ({ ...prev, [index]: 0 }));
+          throw error;
+        }
+      });
+
+      const results = await Promise.all(uploadPromises);
+
+      // All uploads successful
+      alert(`Successfully uploaded ${results.length} file(s)!`);
       setFiles([]);
       onClose();
+
+      // Call the callback to refresh the photo list
+      if (onUpload) {
+        onUpload(files.map((f) => f.file));
+      }
     } catch (error) {
       console.error("Upload failed:", error);
+      setError(error.message || "Upload failed. Please try again.");
     } finally {
       setUploading(false);
     }
@@ -51,13 +109,16 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
 
   return (
     <Dialog open={isOpen} onClose={onClose} className="relative z-50">
-      <div className="fixed inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true" />
+      <div
+        className="fixed inset-0 bg-black/50 backdrop-blur-sm"
+        aria-hidden="true"
+      />
 
       <div className="fixed inset-0 flex items-center justify-center p-4">
         <Dialog.Panel className="w-full max-w-3xl rounded-2xl bg-white dark:bg-gray-800 p-6 shadow-xl">
           <div className="flex justify-between items-center mb-6">
             <Dialog.Title className="text-2xl font-semibold text-gray-800 dark:text-gray-100">
-              Upload Photos
+              Upload Files
             </Dialog.Title>
             <button
               onClick={onClose}
@@ -86,10 +147,11 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
             <p className="text-gray-600 dark:text-gray-300 mb-2">
               {isDragActive
                 ? "Drop the files here..."
-                : "Drag & drop photos here, or click to select"}
+                : "Drag & drop files here, or click to select"}
             </p>
             <p className="text-sm text-gray-500 dark:text-gray-400">
-              Supports: JPG, PNG, GIF, WEBP
+              Supports: Images (JPG, PNG, GIF, WEBP, AVIF, HEIC) and Videos
+              (MP4, MOV, AVI, WEBM)
             </p>
           </div>
 
@@ -97,7 +159,7 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
           {files.length > 0 && (
             <div className="mt-6">
               <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-3">
-                Selected Photos ({files.length})
+                Selected Files ({files.length})
               </h3>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                 {files.map((file) => (
@@ -105,11 +167,19 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
                     key={file.preview}
                     className="relative group aspect-square rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-700"
                   >
-                    <img
-                      src={file.preview}
-                      alt={file.name}
-                      className="w-full h-full object-cover"
-                    />
+                    {file.file.type.startsWith("video/") ? (
+                      <video
+                        src={file.preview}
+                        className="w-full h-full object-cover"
+                        muted
+                      />
+                    ) : (
+                      <img
+                        src={file.preview}
+                        alt={file.name}
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                     <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition-opacity">
                       <div className="absolute inset-0 flex flex-col items-center justify-center p-2 text-white">
                         <p className="text-sm truncate w-full text-center">
@@ -129,6 +199,37 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
                         </button>
                       </div>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Error Display */}
+          {error && (
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+              <p className="text-red-600 dark:text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          {/* Upload Progress */}
+          {uploading && files.length > 0 && (
+            <div className="mt-4">
+              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                Upload Progress
+              </h4>
+              <div className="space-y-2">
+                {files.map((file, index) => (
+                  <div key={index} className="flex items-center gap-3">
+                    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
+                      <div
+                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
+                        style={{ width: `${uploadProgress[index] || 0}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[3rem]">
+                      {uploadProgress[index] || 0}%
+                    </span>
                   </div>
                 ))}
               </div>
@@ -158,7 +259,9 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
               ) : (
                 <>
                   <Upload className="w-5 h-5" />
-                  <span>Upload {files.length} Photos</span>
+                  <span>
+                    Upload {files.length} File{files.length !== 1 ? "s" : ""}
+                  </span>
                 </>
               )}
             </button>
@@ -167,4 +270,4 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
       </div>
     </Dialog>
   );
-} 
+}

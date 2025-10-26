@@ -132,21 +132,13 @@ export default function PhotosPage() {
     <ProtectedRoute>
       <MainLayout>
         <div className="space-y-6">
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-                Photos
-              </h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Welcome back, {currentUser}!
-              </p>
-            </div>
-            <button
-              onClick={logout}
-              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
-            >
-              Logout
-            </button>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+              Photos
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Welcome back, {currentUser}!
+            </p>
           </div>
 
           <PhotoToolbar

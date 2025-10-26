@@ -1,5 +1,5 @@
-'use client';
-import { createContext, useContext, useState, useEffect } from 'react';
+"use client";
+import { createContext, useContext, useState, useEffect } from "react";
 
 const SessionContext = createContext();
 
@@ -12,26 +12,26 @@ export function SessionProvider({ children }) {
   useEffect(() => {
     const checkSession = () => {
       try {
-        const sessionData = localStorage.getItem('picfolio_session');
+        const sessionData = localStorage.getItem("picfolio_session");
         if (sessionData) {
           const { user, timestamp } = JSON.parse(sessionData);
           const now = Date.now();
           const sessionAge = now - timestamp;
-          
+
           // Session expires after 24 hours (optional)
           const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-          
+
           if (sessionAge < maxAge) {
             setIsAuthenticated(true);
             setCurrentUser(user);
           } else {
             // Session expired, clear it
-            localStorage.removeItem('picfolio_session');
+            localStorage.removeItem("picfolio_session");
           }
         }
       } catch (error) {
-        console.error('Error checking session:', error);
-        localStorage.removeItem('picfolio_session');
+        console.error("Error checking session:", error);
+        localStorage.removeItem("picfolio_session");
       } finally {
         setIsLoading(false);
       }
@@ -40,28 +40,46 @@ export function SessionProvider({ children }) {
     checkSession();
   }, []);
 
-  // Clean up session on tab close/window unload
+  // Clean up session only when browser is closed (not tab close/switch)
   useEffect(() => {
-    const handleBeforeUnload = () => {
-      // Clear session when tab is closed
-      localStorage.removeItem('picfolio_session');
+    let isNavigating = false;
+
+    const handleBeforeUnload = (event) => {
+      // Don't clear session on navigation (tab switch, page refresh, etc.)
+      // Only clear when browser is actually closing
+      isNavigating = true;
+
+      // Use a small timeout to detect if this is really a browser close
+      setTimeout(() => {
+        if (!isNavigating) {
+          // Browser is actually closing
+          localStorage.removeItem("picfolio_session");
+        }
+      }, 100);
     };
 
-    const handleVisibilityChange = () => {
-      // Clear session when tab becomes hidden (user switches tabs)
-      if (document.hidden) {
-        localStorage.removeItem('picfolio_session');
-        setIsAuthenticated(false);
-        setCurrentUser(null);
+    const handlePageShow = () => {
+      // Reset navigation flag when page becomes visible again
+      isNavigating = false;
+    };
+
+    const handlePageHide = (event) => {
+      // Only clear session if the page is being unloaded permanently
+      // and not due to navigation or tab switching
+      if (!event.persisted && !isNavigating) {
+        localStorage.removeItem("picfolio_session");
       }
     };
 
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
+    // Listen for page visibility changes
+    window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("pagehide", handlePageHide);
+    window.addEventListener("pageshow", handlePageShow);
 
     return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("pagehide", handlePageHide);
+      window.removeEventListener("pageshow", handlePageShow);
     };
   }, []);
 
@@ -69,16 +87,16 @@ export function SessionProvider({ children }) {
     const sessionData = {
       user,
       password, // Store for API calls
-      timestamp: Date.now()
+      timestamp: Date.now(),
     };
-    
-    localStorage.setItem('picfolio_session', JSON.stringify(sessionData));
+
+    localStorage.setItem("picfolio_session", JSON.stringify(sessionData));
     setIsAuthenticated(true);
     setCurrentUser(user);
   };
 
   const logout = () => {
-    localStorage.removeItem('picfolio_session');
+    localStorage.removeItem("picfolio_session");
     setIsAuthenticated(false);
     setCurrentUser(null);
   };
@@ -88,20 +106,18 @@ export function SessionProvider({ children }) {
     currentUser,
     isLoading,
     login,
-    logout
+    logout,
   };
 
   return (
-    <SessionContext.Provider value={value}>
-      {children}
-    </SessionContext.Provider>
+    <SessionContext.Provider value={value}>{children}</SessionContext.Provider>
   );
 }
 
 export function useSession() {
   const context = useContext(SessionContext);
   if (context === undefined) {
-    throw new Error('useSession must be used within a SessionProvider');
+    throw new Error("useSession must be used within a SessionProvider");
   }
   return context;
 }

@@ -10,8 +10,10 @@ import {
   LogOut,
   X,
 } from "lucide-react";
+import { useSession } from "../providers/SessionProvider";
 
 export default function MainLayout({ children }) {
+  const { logout } = useSession();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const menuItems = [
@@ -92,6 +94,7 @@ export default function MainLayout({ children }) {
 
           <div className="p-4 border-t dark:border-gray-700">
             <button
+              onClick={logout}
               className="flex items-center gap-4 p-3 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700
               text-gray-700 dark:text-gray-300 w-full"
             >
