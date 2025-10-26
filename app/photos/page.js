@@ -1,5 +1,5 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import PhotoGrid from "@/components/photos/PhotoGrid";
 import PhotoToolbar from "@/components/photos/PhotoToolbar";
@@ -10,6 +10,7 @@ import { useGallery } from "@/store/GalleryStore";
 import Lightbox from "@/components/photos/Lightbox";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import { useSession } from "@/components/providers/SessionProvider";
+import { API_ENDPOINTS, API_BASE_URL } from "@/config/api";
 
 export default function PhotosPage() {
   const { currentUser, logout } = useSession();
@@ -21,8 +22,74 @@ export default function PhotosPage() {
   const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
   const [visibleGroups, setVisibleGroups] = useState(2);
 
+  // Real data from API
+  const [photosByDate, setPhotosByDate] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [currentPage, setCurrentPage] = useState(0);
+
+  // Fetch photos from API
+  const fetchPhotos = useCallback(
+    async (page = 0) => {
+      if (!currentUser) return;
+
+      try {
+        setLoading(true);
+        setError("");
+
+        const formData = new FormData();
+        formData.append("username", currentUser);
+        formData.append("page", page.toString());
+
+        const response = await fetch(API_ENDPOINTS.getPhotosList(), {
+          method: "POST",
+          body: formData,
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        // Transform API response to match our component structure
+        const transformedData = data.map(([date, ids]) => ({
+          date: date,
+          photos: ids.map(([id, _, duration]) => ({
+            id: id.toString(),
+            url: `${API_BASE_URL}api/photo/${id}?username=${currentUser}`,
+            title: `Photo ${id}`,
+            isVideo: duration !== null && duration !== undefined,
+            duration: duration || null,
+          })),
+        }));
+
+        if (page === 0) {
+          setPhotosByDate(transformedData);
+        } else {
+          setPhotosByDate((prev) => [...prev, ...transformedData]);
+        }
+      } catch (error) {
+        console.error("Error fetching photos:", error);
+        setError("Failed to load photos. Please try again.");
+        // Fallback to dummy data if API fails
+        setPhotosByDate(dummyPhotosByDate);
+      } finally {
+        setLoading(false);
+      }
+    },
+    [currentUser]
+  );
+
+  // Load photos on component mount
+  useEffect(() => {
+    fetchPhotos(0);
+  }, [fetchPhotos]);
+
   const loadMore = () => {
-    setVisibleGroups((v) => Math.min(v + 2, dummyPhotosByDate.length));
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchPhotos(nextPage);
   };
 
   const handleSelectPhoto = (photoId) => {
@@ -47,7 +114,7 @@ export default function PhotosPage() {
   };
 
   const handleSelectAll = () => {
-    const allPhotoIds = dummyPhotosByDate.flatMap((group) =>
+    const allPhotoIds = photosByDate.flatMap((group) =>
       group.photos.map((photo) => photo.id)
     );
 
@@ -68,41 +135,19 @@ export default function PhotosPage() {
   };
 
   // Filter photos based on search query
-  const filteredPhotosByDate = dummyPhotosByDate
+  const filteredPhotosByDate = photosByDate
     .map((group) => ({
       ...group,
       photos: group.photos.filter((photo) =>
         photo.title.toLowerCase().includes(searchQuery.toLowerCase())
       ),
     }))
-    .filter((group) => group.photos.length > 0)
-    .slice(0, visibleGroups);
+    .filter((group) => group.photos.length > 0);
 
   const handleUploadPhotos = async (files) => {
-    // Here you would typically upload the files to your server
-    // For now, we'll just add them to the dummy data
-    const newPhotos = files.map((file) => ({
-      id: uuidv4(),
-      url: file.preview,
-      title: file.name,
-    }));
-
-    // Add the new photos to Today's group
-    const updatedPhotosByDate = [...dummyPhotosByDate];
-    if (updatedPhotosByDate[0].date === "Today") {
-      updatedPhotosByDate[0].photos = [
-        ...newPhotos,
-        ...updatedPhotosByDate[0].photos,
-      ];
-    } else {
-      updatedPhotosByDate.unshift({
-        date: "Today",
-        photos: newPhotos,
-      });
-    }
-
-    // In a real app, you would update your backend here
-    // For now, we'll just force a re-render
+    // After successful upload, refresh the photos list
+    setCurrentPage(0);
+    await fetchPhotos(0);
     setSelectedPhotos([]);
   };
 
@@ -111,7 +156,7 @@ export default function PhotosPage() {
       id: uuidv4(),
       title,
       description,
-      photos: dummyPhotosByDate
+      photos: photosByDate
         .flatMap((group) => group.photos)
         .filter((photo) => photoIds.includes(photo.id)),
       createdAt: new Date().toISOString(),
@@ -146,7 +191,7 @@ export default function PhotosPage() {
             onSelectAll={handleSelectAll}
             isAllSelected={
               selectedPhotos.length ===
-              dummyPhotosByDate.flatMap((g) => g.photos).length
+              photosByDate.flatMap((g) => g.photos).length
             }
             onClearSelection={() => setSelectedPhotos([])}
             searchQuery={searchQuery}
@@ -154,9 +199,32 @@ export default function PhotosPage() {
             onAddToFavorites={handleAddSelectedToFavorites}
             onUploadPhotos={handleUploadPhotos}
             onCreateAlbum={handleCreateAlbum}
-            availablePhotos={dummyPhotosByDate.flatMap((group) => group.photos)}
+            availablePhotos={photosByDate.flatMap((group) => group.photos)}
             selectedPhotos={selectedPhotos}
           />
+
+          {/* Loading State */}
+          {loading && photosByDate.length === 0 && (
+            <div className="text-center py-12">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+              <p className="text-gray-600 dark:text-gray-400">
+                Loading photos...
+              </p>
+            </div>
+          )}
+
+          {/* Error State */}
+          {error && (
+            <div className="text-center py-12">
+              <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
+              <button
+                onClick={() => fetchPhotos(0)}
+                className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
+              >
+                Retry
+              </button>
+            </div>
+          )}
 
           <div className="space-y-8">
             {filteredPhotosByDate.map((group) => {
@@ -199,13 +267,14 @@ export default function PhotosPage() {
               </div>
             )}
 
-            {visibleGroups < dummyPhotosByDate.length && (
+            {!loading && photosByDate.length > 0 && (
               <div className="flex justify-center py-6">
                 <button
                   onClick={loadMore}
-                  className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                  disabled={loading}
+                  className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800 disabled:opacity-50"
                 >
-                  Load more
+                  {loading ? "Loading..." : "Load more"}
                 </button>
               </div>
             )}
