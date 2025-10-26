@@ -8,9 +8,11 @@ import { dummyPhotosByDate } from "@/data/photos";
 import { v4 as uuidv4 } from "uuid";
 import { useGallery } from "@/store/GalleryStore";
 import Lightbox from "@/components/photos/Lightbox";
-import { useState as _useState } from "react";
+import ProtectedRoute from "@/components/common/ProtectedRoute";
+import { useSession } from "@/components/providers/SessionProvider";
 
 export default function PhotosPage() {
+  const { currentUser, logout } = useSession();
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const { favorites, toggleFavorite, addFavorites, addAlbum } = useGallery();
@@ -127,96 +129,106 @@ export default function PhotosPage() {
   };
 
   return (
-    <MainLayout>
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-            Photos
-          </h1>
-          <p className="text-gray-600 dark:text-gray-400 mt-2">
-            Browse and manage your photos
-          </p>
-        </div>
+    <ProtectedRoute>
+      <MainLayout>
+        <div className="space-y-6">
+          <div className="flex justify-between items-center">
+            <div>
+              <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
+                Photos
+              </h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
+                Welcome back, {currentUser}!
+              </p>
+            </div>
+            <button
+              onClick={logout}
+              className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
+            >
+              Logout
+            </button>
+          </div>
 
-        <PhotoToolbar
-          selectedCount={selectedPhotos.length}
-          onSelectAll={handleSelectAll}
-          isAllSelected={
-            selectedPhotos.length ===
-            dummyPhotosByDate.flatMap((g) => g.photos).length
-          }
-          onClearSelection={() => setSelectedPhotos([])}
-          searchQuery={searchQuery}
-          onSearchChange={setSearchQuery}
-          onAddToFavorites={handleAddSelectedToFavorites}
-          onUploadPhotos={handleUploadPhotos}
-          onCreateAlbum={handleCreateAlbum}
-          availablePhotos={dummyPhotosByDate.flatMap((group) => group.photos)}
-          selectedPhotos={selectedPhotos}
-        />
+          <PhotoToolbar
+            selectedCount={selectedPhotos.length}
+            onSelectAll={handleSelectAll}
+            isAllSelected={
+              selectedPhotos.length ===
+              dummyPhotosByDate.flatMap((g) => g.photos).length
+            }
+            onClearSelection={() => setSelectedPhotos([])}
+            searchQuery={searchQuery}
+            onSearchChange={setSearchQuery}
+            onAddToFavorites={handleAddSelectedToFavorites}
+            onUploadPhotos={handleUploadPhotos}
+            onCreateAlbum={handleCreateAlbum}
+            availablePhotos={dummyPhotosByDate.flatMap((group) => group.photos)}
+            selectedPhotos={selectedPhotos}
+          />
 
-        <div className="space-y-8">
-          {filteredPhotosByDate.map((group) => {
-            const datePhotoIds = group.photos.map((photo) => photo.id);
-            const dateSelectionCount = datePhotoIds.filter((id) =>
-              selectedPhotos.includes(id)
-            ).length;
+          <div className="space-y-8">
+            {filteredPhotosByDate.map((group) => {
+              const datePhotoIds = group.photos.map((photo) => photo.id);
+              const dateSelectionCount = datePhotoIds.filter((id) =>
+                selectedPhotos.includes(id)
+              ).length;
 
-            return (
-              <DateSection
-                key={group.date}
-                date={group.date}
-                onSelectAll={() => handleSelectAllInDate(group.photos)}
-                isAllSelected={datePhotoIds.every((id) =>
-                  selectedPhotos.includes(id)
-                )}
-                selectionCount={dateSelectionCount}
-              >
-                <PhotoGrid
-                  photos={group.photos}
-                  selectedPhotos={selectedPhotos}
-                  onSelectPhoto={handleSelectPhoto}
+              return (
+                <DateSection
+                  key={group.date}
+                  date={group.date}
+                  onSelectAll={() => handleSelectAllInDate(group.photos)}
                   isAllSelected={datePhotoIds.every((id) =>
                     selectedPhotos.includes(id)
                   )}
-                  favorites={favorites}
-                  onToggleFavorite={handleToggleFavorite}
-                  onOpenPhoto={(photo) => openLightbox(photo, group.photos)}
-                />
-              </DateSection>
-            );
-          })}
+                  selectionCount={dateSelectionCount}
+                >
+                  <PhotoGrid
+                    photos={group.photos}
+                    selectedPhotos={selectedPhotos}
+                    onSelectPhoto={handleSelectPhoto}
+                    isAllSelected={datePhotoIds.every((id) =>
+                      selectedPhotos.includes(id)
+                    )}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                    onOpenPhoto={(photo) => openLightbox(photo, group.photos)}
+                  />
+                </DateSection>
+              );
+            })}
 
-          {/* No Results Message */}
-          {filteredPhotosByDate.length === 0 && (
-            <div className="text-center py-12">
-              <p className="text-gray-500 dark:text-gray-400">
-                No photos found matching {`"${searchQuery}"`}
-              </p>
-            </div>
-          )}
+            {/* No Results Message */}
+            {filteredPhotosByDate.length === 0 && (
+              <div className="text-center py-12">
+                <p className="text-gray-500 dark:text-gray-400">
+                  No photos found matching {`"${searchQuery}"`}
+                </p>
+              </div>
+            )}
 
-          {visibleGroups < dummyPhotosByDate.length && (
-            <div className="flex justify-center py-6">
-              <button
-                onClick={loadMore}
-                className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                Load more
-              </button>
-            </div>
-          )}
+            {visibleGroups < dummyPhotosByDate.length && (
+              <div className="flex justify-center py-6">
+                <button
+                  onClick={loadMore}
+                  className="px-4 py-2 rounded-lg border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-800"
+                >
+                  Load more
+                </button>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
 
-      <Lightbox
-        isOpen={lightboxOpen}
-        onClose={() => setLightboxOpen(false)}
-        photos={lightboxPhotos}
-        startIndex={lightboxStartIndex}
-        favorites={favorites}
-        onToggleFavorite={handleToggleFavorite}
-      />
-    </MainLayout>
+        <Lightbox
+          isOpen={lightboxOpen}
+          onClose={() => setLightboxOpen(false)}
+          photos={lightboxPhotos}
+          startIndex={lightboxStartIndex}
+          favorites={favorites}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      </MainLayout>
+    </ProtectedRoute>
   );
 }

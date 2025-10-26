@@ -1,7 +1,12 @@
 "use client";
 
 import { GalleryProvider } from "@/store/GalleryStore";
+import { SessionProvider } from "./SessionProvider";
 
 export default function Providers({ children }) {
-  return <GalleryProvider>{children}</GalleryProvider>;
+  return (
+    <SessionProvider>
+      <GalleryProvider>{children}</GalleryProvider>
+    </SessionProvider>
+  );
 }
