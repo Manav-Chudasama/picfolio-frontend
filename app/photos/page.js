@@ -57,7 +57,7 @@ export default function PhotosPage() {
           date: date,
           photos: ids.map(([id, _, duration]) => ({
             id: id.toString(),
-            url: `${API_BASE_URL}api/photo/${id}?username=${currentUser}`,
+            url: `${API_BASE_URL}/api/preview/${currentUser}/${id}`,
             title: `Photo ${id}`,
             isVideo: duration !== null && duration !== undefined,
             duration: duration || null,
@@ -167,7 +167,12 @@ export default function PhotosPage() {
   };
 
   const openLightbox = (photo, photos) => {
-    setLightboxPhotos(photos);
+    // Create high-definition versions for lightbox
+    const hdPhotos = photos.map((p) => ({
+      ...p,
+      url: `${API_BASE_URL}/api/asset/${currentUser}/${p.id}`,
+    }));
+    setLightboxPhotos(hdPhotos);
     const idx = photos.findIndex((p) => p.id === photo.id);
     setLightboxStartIndex(Math.max(0, idx));
     setLightboxOpen(true);
