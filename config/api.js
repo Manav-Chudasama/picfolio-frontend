@@ -10,7 +10,14 @@ export const API_ENDPOINTS = {
     `${API_BASE_URL}/api/user/rename/${username}/${newUsername}`,
   deleteUser: (username) => `${API_BASE_URL}/api/user/delete/${username}`,
   uploadAsset: () => `${API_BASE_URL}/api/upload`,
-  getPhotosList: () => `${API_BASE_URL}api/list/general`,
+  getPhotosList: () => `${API_BASE_URL}/api/list/general`,
   getAssetDetails: (username, photoId) =>
     `${API_BASE_URL}/api/details/${username}/${photoId}`,
+
+  // Favorites APIs
+  toggleLike: (username, assetId) =>
+    `${API_BASE_URL}/api/like/${username}/${assetId}`,
+  checkLiked: (username, assetId) =>
+    `${API_BASE_URL}/api/liked/${username}/${assetId}`,
+  searchAssets: () => `${API_BASE_URL}/api/search`,
 };
