@@ -16,7 +16,7 @@ export default function PhotosPage() {
   const { currentUser, logout } = useSession();
   const [selectedPhotos, setSelectedPhotos] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
-  const { favorites, toggleFavorite, addFavorites, addAlbum } = useGallery();
+  const { favorites, toggleFavorite, addFavorites, addAlbum, setUser, syncFavorites } = useGallery();
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxPhotos, setLightboxPhotos] = useState([]);
   const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
@@ -27,6 +27,14 @@ export default function PhotosPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
+
+  // Sync user and favorites when currentUser changes
+  useEffect(() => {
+    if (currentUser) {
+      setUser(currentUser);
+      syncFavorites();
+    }
+  }, [currentUser, setUser, syncFavorites]);
 
   // Fetch photos from API
   const fetchPhotos = useCallback(
