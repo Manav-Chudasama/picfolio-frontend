@@ -11,4 +11,6 @@ export const API_ENDPOINTS = {
   deleteUser: (username) => `${API_BASE_URL}/api/user/delete/${username}`,
   uploadAsset: () => `${API_BASE_URL}/api/upload`,
   getPhotosList: () => `${API_BASE_URL}api/list/general`,
+  getAssetDetails: (username, photoId) =>
+    `${API_BASE_URL}/api/details/${username}/${photoId}`,
 };

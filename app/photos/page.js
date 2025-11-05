@@ -293,6 +293,7 @@ export default function PhotosPage() {
           startIndex={lightboxStartIndex}
           favorites={favorites}
           onToggleFavorite={handleToggleFavorite}
+          currentUser={currentUser}
         />
       </MainLayout>
     </ProtectedRoute>
