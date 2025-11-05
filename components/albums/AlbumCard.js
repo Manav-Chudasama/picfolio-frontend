@@ -3,13 +3,9 @@ import Link from "next/link";
 import { ImageIcon, Trash2 } from "lucide-react";
 
 export default function AlbumCard({ album, onDelete }) {
-  const coverPhoto = album.photos[0];
-
   const handleDelete = (e) => {
     e.preventDefault(); // Prevent navigation
-    if (window.confirm("Are you sure you want to delete this album?")) {
-      onDelete(album.id);
-    }
+    onDelete(album.id);
   };
 
   return (
@@ -18,9 +14,9 @@ export default function AlbumCard({ album, onDelete }) {
       className="group rounded-lg overflow-hidden bg-white dark:bg-gray-800 shadow-md hover:shadow-lg transition-shadow"
     >
       <div className="aspect-video relative bg-gray-100 dark:bg-gray-700">
-        {coverPhoto ? (
+        {album.coverUrl ? (
           <Image
-            src={coverPhoto.url}
+            src={album.coverUrl}
             alt={album.title}
             fill
             className="object-cover"
@@ -45,13 +41,12 @@ export default function AlbumCard({ album, onDelete }) {
         <h3 className="font-medium text-gray-800 dark:text-gray-100 mb-1">
           {album.title}
         </h3>
-        <p className="text-sm text-gray-500 dark:text-gray-400 line-clamp-2">
-          {album.description}
-        </p>
-        <p className="text-sm text-gray-400 dark:text-gray-500 mt-2">
-          {album.photos.length} photos
-        </p>
+        {album.startDate && (
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {new Date(album.startDate).toLocaleDateString()}
+          </p>
+        )}
       </div>
     </Link>
   );
-} 
+}

@@ -1,6 +1,5 @@
 "use client";
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { Dialog } from "@headlessui/react";
 import { X } from "lucide-react";
 import Image from "next/image";
@@ -12,7 +11,6 @@ export default function CreateAlbumModal({
   availablePhotos = [],
   preselectedPhotos = [],
 }) {
-  const router = useRouter();
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [selectedPhotos, setSelectedPhotos] = useState([]);
@@ -38,13 +36,11 @@ export default function CreateAlbumModal({
     e.preventDefault();
     onCreateAlbum({
       title,
-      description,
       photoIds: selectedPhotos,
     });
     setTitle("");
     setDescription("");
     setSelectedPhotos([]);
-    router.push("/albums");
     onClose();
   };
 
@@ -158,7 +154,7 @@ export default function CreateAlbumModal({
               </button>
               <button
                 type="submit"
-                disabled={!title || selectedPhotos.length === 0}
+                disabled={!title}
                 className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600
                   disabled:opacity-50 disabled:cursor-not-allowed"
               >

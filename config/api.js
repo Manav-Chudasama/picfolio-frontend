@@ -29,4 +29,15 @@ export const API_ENDPOINTS = {
     `${API_BASE_URL}/api/face/name/${username}/${faceId}`,
   getFaceAssets: (username, faceId) =>
     `${API_BASE_URL}/api/list/face/${username}/${faceId}`,
+
+  // Album APIs
+  listAlbums: () => `${API_BASE_URL}/api/list/albums`,
+  createAlbum: () => `${API_BASE_URL}/api/album/create`,
+  addAssetsToAlbum: () => `${API_BASE_URL}/api/album/add`,
+  removeAssetsFromAlbum: () => `${API_BASE_URL}/api/album/remove`,
+  deleteAlbum: () => `${API_BASE_URL}/api/album/delete`,
+  getAlbumAssets: (username, albumId) =>
+    `${API_BASE_URL}/api/album/${username}/${albumId}`,
+  renameAlbum: () => `${API_BASE_URL}/api/album/rename`,
+  redateAlbum: () => `${API_BASE_URL}/api/album/redate`,
 };
