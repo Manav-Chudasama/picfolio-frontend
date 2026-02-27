@@ -10,7 +10,8 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
   const { currentUser } = useSession();
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState({});
+  const [uploadProgress, setUploadProgress] = useState(0);
+  const [uploadedCount, setUploadedCount] = useState(0);
   const [error, setError] = useState("");
 
   const onDrop = useCallback((acceptedFiles) => {
@@ -57,10 +58,16 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
 
     setUploading(true);
     setError("");
-    setUploadProgress({});
+    setUploadProgress(0);
+    setUploadedCount(0);
 
     try {
-      const uploadPromises = files.map(async (fileItem, index) => {
+      const totalFiles = files.length;
+      let completed = 0;
+
+      // Upload files sequentially to track progress properly
+      for (let i = 0; i < files.length; i++) {
+        const fileItem = files[i];
         const formData = new FormData();
         formData.append("username", currentUser);
         formData.append("asset", fileItem.file);
@@ -79,19 +86,18 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
             );
           }
 
-          const result = await response.json();
-          setUploadProgress((prev) => ({ ...prev, [index]: 100 }));
-          return { success: true, file: fileItem.name, result };
+          await response.json();
+          completed++;
+          setUploadedCount(completed);
+          setUploadProgress(Math.round((completed / totalFiles) * 100));
         } catch (error) {
-          setUploadProgress((prev) => ({ ...prev, [index]: 0 }));
+          console.error(`Upload failed for ${fileItem.name}:`, error);
           throw error;
         }
-      });
-
-      const results = await Promise.all(uploadPromises);
+      }
 
       // All uploads successful
-      alert(`Successfully uploaded ${results.length} file(s)!`);
+      alert(`Successfully uploaded ${completed} file(s)!`);
       setFiles([]);
       onClose();
 
@@ -104,6 +110,8 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
       setError(error.message || "Upload failed. Please try again.");
     } finally {
       setUploading(false);
+      setUploadProgress(0);
+      setUploadedCount(0);
     }
   };
 
@@ -161,7 +169,7 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
               <h3 className="text-lg font-medium text-gray-800 dark:text-gray-100 mb-3">
                 Selected Files ({files.length})
               </h3>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-96 overflow-y-auto pr-2">
                 {files.map((file) => (
                   <div
                     key={file.preview}
@@ -215,23 +223,32 @@ export default function UploadModal({ isOpen, onClose, onUpload }) {
           {/* Upload Progress */}
           {uploading && files.length > 0 && (
             <div className="mt-4">
-              <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Upload Progress
-              </h4>
-              <div className="space-y-2">
-                {files.map((file, index) => (
-                  <div key={index} className="flex items-center gap-3">
-                    <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-2">
-                      <div
-                        className="bg-blue-500 h-2 rounded-full transition-all duration-300"
-                        style={{ width: `${uploadProgress[index] || 0}%` }}
-                      />
-                    </div>
-                    <span className="text-xs text-gray-500 dark:text-gray-400 min-w-[3rem]">
-                      {uploadProgress[index] || 0}%
-                    </span>
+              <div className="flex justify-between items-center mb-2">
+                <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                  Upload Progress
+                </h4>
+                <span className="text-sm text-gray-600 dark:text-gray-400">
+                  {uploadedCount} / {files.length} files
+                </span>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex-1 bg-gray-200 dark:bg-gray-700 rounded-full h-3">
+                  <div
+                    className="bg-blue-500 h-3 rounded-full transition-all duration-300 flex items-center justify-center"
+                    style={{ width: `${uploadProgress}%` }}
+                  >
+                    {uploadProgress > 10 && (
+                      <span className="text-xs text-white font-medium">
+                        {uploadProgress}%
+                      </span>
+                    )}
                   </div>
-                ))}
+                </div>
+                {uploadProgress <= 10 && (
+                  <span className="text-sm text-gray-600 dark:text-gray-400 min-w-[3rem]">
+                    {uploadProgress}%
+                  </span>
+                )}
               </div>
             </div>
           )}

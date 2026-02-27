@@ -1,31 +1,31 @@
 "use client";
+
 import { useState, useEffect, useCallback } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import PhotoGrid from "@/components/photos/PhotoGrid";
-import PhotoToolbar from "@/components/photos/PhotoToolbar";
 import DateSection from "@/components/photos/DateSection";
-import { useGallery } from "@/store/GalleryStore";
 import Lightbox from "@/components/photos/Lightbox";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import { useSession } from "@/components/providers/SessionProvider";
+import { useGallery } from "@/store/GalleryStore";
 import { API_ENDPOINTS, API_BASE_URL } from "@/config/api";
+import { Trash2 } from "lucide-react";
 
-export default function FavoritesPage() {
+export default function BlurryPage() {
   const { currentUser } = useSession();
+  const { favorites, toggleFavorite, setUser, syncFavorites } = useGallery();
+  
+  const [photosByDate, setPhotosByDate] = useState([]);
   const [selectedPhotos, setSelectedPhotos] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const { favorites, toggleFavorite, setUser } = useGallery();
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxPhotos, setLightboxPhotos] = useState([]);
   const [lightboxStartIndex, setLightboxStartIndex] = useState(0);
 
-  // Real data from API
-  const [photosByDate, setPhotosByDate] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
-
-  // Fetch favorite photos from API
-  const fetchFavorites = useCallback(async () => {
+  // Fetch blurry images from API
+  const fetchBlurryImages = useCallback(async () => {
     if (!currentUser) return;
 
     try {
@@ -34,7 +34,7 @@ export default function FavoritesPage() {
 
       const formData = new FormData();
       formData.append("username", currentUser);
-      formData.append("query", "favourite");
+      formData.append("query", "blurry");
       formData.append("type", "buttons");
 
       const response = await fetch(API_ENDPOINTS.searchAssets(), {
@@ -47,11 +47,12 @@ export default function FavoritesPage() {
       }
 
       const data = await response.json();
-
-      // Transform API response to match our component structure
-      const transformedData = data.map(([date, ids]) => ({
-        date: date,
-        photos: ids.map(([id, _, duration]) => ({
+      
+      // Response format: [[date, [[id], [id], ...]], ...]
+      // Transform to match our photo grid format
+      const photosByDateArray = data.map(([date, idsArray]) => ({
+        date,
+        photos: idsArray.map(([id, duration]) => ({
           id: id.toString(),
           url: API_ENDPOINTS.getPreview(currentUser, id),
           title: `Photo ${id}`,
@@ -60,22 +61,23 @@ export default function FavoritesPage() {
         })),
       }));
 
-      setPhotosByDate(transformedData);
+      setPhotosByDate(photosByDateArray);
     } catch (error) {
-      console.error("Error fetching favorites:", error);
-      setError("Failed to load favorite photos. Please try again.");
+      console.error("Error fetching blurry images:", error);
+      setError("Failed to load blurry images. Please try again.");
     } finally {
       setLoading(false);
     }
   }, [currentUser]);
 
-  // Sync user and load favorites when currentUser changes
+  // Sync user and load blurry images
   useEffect(() => {
     if (currentUser) {
       setUser(currentUser);
-      fetchFavorites();
+      syncFavorites();
+      fetchBlurryImages();
     }
-  }, [currentUser, setUser, fetchFavorites]);
+  }, [currentUser, setUser, syncFavorites, fetchBlurryImages]);
 
   const handleSelectPhoto = (photoId) => {
     setSelectedPhotos((prev) =>
@@ -85,10 +87,21 @@ export default function FavoritesPage() {
     );
   };
 
-  const handleToggleFavorite = async (photoId) => {
-    await toggleFavorite(photoId);
-    // Refresh the favorites list after toggling
-    fetchFavorites();
+  const handleSelectAllInDate = (datePhotos) => {
+    const datePhotoIds = datePhotos.map((photo) => photo.id);
+    const allSelected = datePhotoIds.every((id) => selectedPhotos.includes(id));
+
+    if (allSelected) {
+      setSelectedPhotos((prev) =>
+        prev.filter((id) => !datePhotoIds.includes(id))
+      );
+    } else {
+      setSelectedPhotos((prev) => [...new Set([...prev, ...datePhotoIds])]);
+    }
+  };
+
+  const handleToggleFavorite = (photoId) => {
+    toggleFavorite(photoId);
   };
 
   const handleDeletePhotos = async () => {
@@ -116,8 +129,8 @@ export default function FavoritesPage() {
 
       const result = await response.json();
 
-      // Refresh the favorites list
-      await fetchFavorites();
+      // Refresh the blurry images list
+      await fetchBlurryImages();
       setSelectedPhotos([]);
     } catch (error) {
       console.error("Error deleting assets:", error);
@@ -125,50 +138,7 @@ export default function FavoritesPage() {
     }
   };
 
-  const handleDeleteSinglePhoto = async (photoId) => {
-    if (!currentUser) return;
-
-    if (
-      !window.confirm(
-        `Move this photo to bin? It will be permanently deleted after 90 days.`
-      )
-    ) {
-      return;
-    }
-
-    try {
-      const response = await fetch(
-        API_ENDPOINTS.deleteAssets(currentUser, photoId),
-        {
-          method: "DELETE",
-        }
-      );
-
-      if (!response.ok) {
-        throw new Error("Failed to delete asset");
-      }
-
-      // Close lightbox and refresh
-      setLightboxOpen(false);
-      await fetchFavorites();
-    } catch (error) {
-      console.error("Error deleting asset:", error);
-      alert("Failed to delete photo. Please try again.");
-    }
-  };
-
-  // Filter photos based on search query
-  const filteredPhotosByDate = photosByDate
-    .map((group) => ({
-      ...group,
-      photos: group.photos.filter((photo) =>
-        photo.title.toLowerCase().includes(searchQuery.toLowerCase())
-      ),
-    }))
-    .filter((group) => group.photos.length > 0);
-
   const openLightbox = (photo, photos) => {
-    // Create high-definition versions for lightbox
     const hdPhotos = photos.map((p) => ({
       ...p,
       url: API_ENDPOINTS.getPreview(currentUser, p.id),
@@ -183,30 +153,43 @@ export default function FavoritesPage() {
     <ProtectedRoute>
       <MainLayout>
         <div className="space-y-6">
+          {/* Header */}
           <div>
             <h1 className="text-3xl font-bold text-gray-800 dark:text-gray-100">
-              Favorites
+              Blurry Images
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Browse your favorite photos
+              Photos that may be out of focus or blurry
             </p>
           </div>
 
-          <PhotoToolbar
-            selectedCount={selectedPhotos.length}
-            onClearSelection={() => setSelectedPhotos([])}
-            searchQuery={searchQuery}
-            onSearchChange={setSearchQuery}
-            onDelete={handleDeletePhotos}
-            currentUser={currentUser}
-          />
+          {/* Action Buttons */}
+          {selectedPhotos.length > 0 && (
+            <div className="flex gap-2 items-center justify-end">
+              <button
+                onClick={() => setSelectedPhotos([])}
+                className="px-4 py-2 rounded-lg bg-gray-500 text-white hover:bg-gray-600 
+                  flex items-center gap-2"
+              >
+                Clear Selection ({selectedPhotos.length})
+              </button>
+              <button
+                onClick={handleDeletePhotos}
+                className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 
+                  flex items-center gap-2"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Delete</span>
+              </button>
+            </div>
+          )}
 
           {/* Loading State */}
           {loading && (
             <div className="text-center py-12">
               <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
               <p className="text-gray-600 dark:text-gray-400">
-                Loading favorites...
+                Loading blurry images...
               </p>
             </div>
           )}
@@ -216,7 +199,7 @@ export default function FavoritesPage() {
             <div className="text-center py-12">
               <p className="text-red-500 dark:text-red-400 mb-4">{error}</p>
               <button
-                onClick={fetchFavorites}
+                onClick={fetchBlurryImages}
                 className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600"
               >
                 Retry
@@ -227,8 +210,14 @@ export default function FavoritesPage() {
           {/* Photos Grid */}
           {!loading && !error && (
             <div className="space-y-8">
-              {filteredPhotosByDate.map((group) => (
-                <DateSection key={group.date} date={group.date}>
+              {photosByDate.map((group) => (
+                <DateSection 
+                  key={group.date} 
+                  date={group.date}
+                  photoCount={group.photos.length}
+                  selectedCount={group.photos.filter(p => selectedPhotos.includes(p.id)).length}
+                  onSelectAll={() => handleSelectAllInDate(group.photos)}
+                >
                   <PhotoGrid
                     photos={group.photos}
                     selectedPhotos={selectedPhotos}
@@ -240,13 +229,11 @@ export default function FavoritesPage() {
                 </DateSection>
               ))}
 
-              {/* No Results Message */}
-              {filteredPhotosByDate.length === 0 && (
+              {/* No Blurry Images Message */}
+              {photosByDate.length === 0 && (
                 <div className="text-center py-12">
                   <p className="text-gray-500 dark:text-gray-400">
-                    {searchQuery
-                      ? `No favorites found matching "${searchQuery}"`
-                      : "No favorite photos yet. Start adding some from your photos!"}
+                    No blurry images detected. All your photos are sharp! 📸
                   </p>
                 </div>
               )}
@@ -261,10 +248,9 @@ export default function FavoritesPage() {
           startIndex={lightboxStartIndex}
           favorites={favorites}
           onToggleFavorite={handleToggleFavorite}
-          currentUser={currentUser}
-          onDelete={handleDeleteSinglePhoto}
         />
       </MainLayout>
     </ProtectedRoute>
   );
 }
+

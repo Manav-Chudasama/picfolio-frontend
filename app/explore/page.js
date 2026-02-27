@@ -3,8 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import PeopleCarousel, { PeopleRow } from "@/components/explore/PeopleCarousel";
-import PlacesGrid from "@/components/explore/PlacesGrid";
-import { places } from "@/data/explore";
+import AutoAlbumsGrid from "@/components/explore/AutoAlbumsGrid";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import { useSession } from "@/components/providers/SessionProvider";
 import { API_ENDPOINTS, API_BASE_URL } from "@/config/api";
@@ -12,7 +11,9 @@ import { API_ENDPOINTS, API_BASE_URL } from "@/config/api";
 export default function ExplorePage() {
   const { currentUser } = useSession();
   const [people, setPeople] = useState([]);
+  const [autoAlbums, setAutoAlbums] = useState({});
   const [loading, setLoading] = useState(true);
+  const [loadingAutoAlbums, setLoadingAutoAlbums] = useState(true);
   const [error, setError] = useState("");
 
   // Fetch faces from API
@@ -54,10 +55,41 @@ export default function ExplorePage() {
     }
   }, [currentUser]);
 
-  // Load faces on component mount
+  // Fetch auto albums from API
+  const fetchAutoAlbums = useCallback(async () => {
+    if (!currentUser) return;
+
+    try {
+      setLoadingAutoAlbums(true);
+
+      const formData = new FormData();
+      formData.append("username", currentUser);
+
+      const response = await fetch(API_ENDPOINTS.getAutoAlbumsList(), {
+        method: "POST",
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const data = await response.json();
+      // Response format: {"Places": [...], "Things": [...], "Documents": [...]}
+      setAutoAlbums(data);
+    } catch (error) {
+      console.error("Error fetching auto albums:", error);
+      // Don't show error for auto albums, just fail silently
+    } finally {
+      setLoadingAutoAlbums(false);
+    }
+  }, [currentUser]);
+
+  // Load faces and auto albums on component mount
   useEffect(() => {
     fetchFaces();
-  }, [fetchFaces]);
+    fetchAutoAlbums();
+  }, [fetchFaces, fetchAutoAlbums]);
 
   return (
     <ProtectedRoute>
@@ -110,8 +142,20 @@ export default function ExplorePage() {
             </div>
           )}
 
-          {/* Places */}
-          <PlacesGrid places={places} />
+          {/* Auto Albums Section */}
+          {!loadingAutoAlbums && (
+            <AutoAlbumsGrid autoAlbums={autoAlbums} currentUser={currentUser} />
+          )}
+
+          {/* Loading Auto Albums */}
+          {loadingAutoAlbums && (
+            <div className="text-center py-8">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-2"></div>
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Loading auto albums...
+              </p>
+            </div>
+          )}
         </div>
       </MainLayout>
     </ProtectedRoute>

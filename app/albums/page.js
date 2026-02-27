@@ -44,7 +44,7 @@ export default function AlbumsPage() {
         coverImageId: coverImageId ? coverImageId.toString() : null,
         startDate: startDate,
         coverUrl: coverImageId
-          ? `${API_BASE_URL}/api/preview/${currentUser}/${coverImageId}`
+          ? API_ENDPOINTS.getPreview(currentUser, coverImageId)
           : null,
       }));
 
@@ -196,7 +196,7 @@ export default function AlbumsPage() {
           const photos = data.flatMap(([date, ids]) =>
             ids.map(([id, _, duration]) => ({
               id: id.toString(),
-              url: `${API_BASE_URL}/api/preview/${currentUser}/${id}`,
+              url: API_ENDPOINTS.getPreview(currentUser, id),
               title: `Photo ${id}`,
               isVideo: duration !== null && duration !== undefined,
               duration: duration || null,

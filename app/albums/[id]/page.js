@@ -4,7 +4,7 @@ import { useParams, useRouter } from "next/navigation";
 import MainLayout from "@/components/layout/MainLayout";
 import PhotoGrid from "@/components/photos/PhotoGrid";
 import DateSection from "@/components/photos/DateSection";
-import { ArrowLeft, Trash2, Edit2, Calendar, Plus, X } from "lucide-react";
+import { ArrowLeft, Trash2, Edit2, Calendar, X } from "lucide-react";
 import Link from "next/link";
 import Image from "next/image";
 import { useSession } from "@/components/providers/SessionProvider";
@@ -32,8 +32,6 @@ export default function AlbumDetailPage() {
   const [editedName, setEditedName] = useState("");
   const [isEditingDate, setIsEditingDate] = useState(false);
   const [editedDate, setEditedDate] = useState("");
-  const [showAddPhotos, setShowAddPhotos] = useState(false);
-  const [availablePhotos, setAvailablePhotos] = useState([]);
 
   // Fetch album metadata
   const fetchAlbumInfo = useCallback(async () => {
@@ -50,7 +48,10 @@ export default function AlbumDetailPage() {
 
       if (response.ok) {
         const data = await response.json();
+        // Find the album matching the current ID
+        // API returns: [[id, name, coverId, date], ...]
         const album = data.find(([id]) => id.toString() === params.id.toString());
+        
         if (album) {
           const [albumId, name, coverImageId, startDate] = album;
           setAlbumData({
@@ -89,12 +90,28 @@ export default function AlbumDetailPage() {
 
       const data = await response.json();
 
+      // Use the date from the assets response if album metadata doesn't have a date
+      // Response structure: [["2025-11-23", [[id], [id, null, duration], ...]], ...]
+      if (data && data.length > 0 && data[0][0]) {
+         const assetsDate = data[0][0];
+         // Update album date if not already set from metadata
+         setAlbumData(prev => {
+           if (prev) {
+             return { ...prev, startDate: prev.startDate || assetsDate };
+           }
+           // If no metadata was loaded, create minimal album data with the date
+           return { id: params.id, title: "Loading...", startDate: assetsDate };
+         });
+         
+         setEditedDate(prev => prev || assetsDate);
+      }
+
       // Transform API response: [[date, [[id], [id, null, duration], ...]], ...]
       const transformedData = data.map(([date, assets]) => ({
         date: date,
         photos: assets.map(([id, _, duration]) => ({
           id: id.toString(),
-          url: `${API_BASE_URL}/api/preview/${currentUser}/${id}`,
+          url: API_ENDPOINTS.getPreview(currentUser, id),
           title: `Photo ${id}`,
           isVideo: duration !== null && duration !== undefined,
           duration: duration || null,
@@ -113,9 +130,11 @@ export default function AlbumDetailPage() {
 
   // Load album data on mount
   useEffect(() => {
-    fetchAlbumInfo();
-    fetchAlbumAssets();
-  }, [fetchAlbumInfo, fetchAlbumAssets]);
+    if (currentUser && params.id) {
+      fetchAlbumInfo();
+      fetchAlbumAssets();
+    }
+  }, [currentUser, params.id]); // Only depend on the actual values, not the functions
 
   const handleDelete = async () => {
     if (!currentUser) return;
@@ -259,82 +278,6 @@ export default function AlbumDetailPage() {
     }
   };
 
-  const handleAddAssets = async (photoIds) => {
-    if (!currentUser || !photoIds || photoIds.length === 0) return;
-
-    try {
-      const formData = new FormData();
-      formData.append("username", currentUser);
-      formData.append("album_id", params.id.toString());
-      formData.append("asset_id", photoIds.join(","));
-
-      const response = await fetch(API_ENDPOINTS.addAssetsToAlbum(), {
-        method: "POST",
-        body: formData,
-      });
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Failed to add photos to album");
-      }
-
-      const result = await response.text();
-      if (result !== "Photos added to album successfully") {
-        throw new Error(result);
-      }
-
-      setShowAddPhotos(false);
-      await fetchAlbumAssets();
-      await fetchAlbumInfo(); // Refresh album info in case cover changed
-    } catch (error) {
-      console.error("Error adding assets:", error);
-      alert(error.message || "Failed to add photos. Please try again.");
-    }
-  };
-
-  // Fetch available photos for adding
-  useEffect(() => {
-    const fetchAvailablePhotos = async () => {
-      if (!currentUser || !showAddPhotos) return;
-
-      try {
-        const formData = new FormData();
-        formData.append("username", currentUser);
-        formData.append("page", "0");
-
-        const response = await fetch(API_ENDPOINTS.getPhotosList(), {
-          method: "POST",
-          body: formData,
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const photos = data.flatMap(([date, ids]) =>
-            ids.map(([id, _, duration]) => ({
-              id: id.toString(),
-              url: `${API_BASE_URL}/api/preview/${currentUser}/${id}`,
-              title: `Photo ${id}`,
-              isVideo: duration !== null && duration !== undefined,
-              duration: duration || null,
-            }))
-          );
-
-          // Filter out photos already in album
-          const albumPhotoIds = new Set(
-            photosByDate.flatMap((group) => group.photos.map((p) => p.id))
-          );
-          setAvailablePhotos(
-            photos.filter((photo) => !albumPhotoIds.has(photo.id))
-          );
-        }
-      } catch (error) {
-        console.error("Error fetching available photos:", error);
-      }
-    };
-
-    fetchAvailablePhotos();
-  }, [currentUser, showAddPhotos, photosByDate]);
-
   const handleSelectPhoto = (photoId) => {
     setSelectedPhotos((prev) =>
       prev.includes(photoId)
@@ -346,7 +289,7 @@ export default function AlbumDetailPage() {
   const openLightbox = (photo, photos) => {
     const hdPhotos = photos.map((p) => ({
       ...p,
-      url: `${API_BASE_URL}/api/asset/${currentUser}/${p.id}`,
+      url: API_ENDPOINTS.getPreview(currentUser, p.id),
     }));
     setLightboxPhotos(hdPhotos);
     const idx = photos.findIndex((p) => p.id === photo.id);
@@ -452,7 +395,7 @@ export default function AlbumDetailPage() {
                       value={editedDate}
                       onChange={(e) => setEditedDate(e.target.value)}
                       className="text-sm text-gray-600 dark:text-gray-400 
-                        bg-transparent border-b border-blue-500 outline-none"
+                        bg-transparent border-b border-blue-500 outline-none px-2 py-1"
                       onKeyDown={(e) => {
                         if (e.key === "Enter") {
                           handleRedate();
@@ -461,6 +404,7 @@ export default function AlbumDetailPage() {
                           setEditedDate(albumData?.startDate || "");
                         }
                       }}
+                      autoFocus
                     />
                     <button
                       onClick={handleRedate}
@@ -480,18 +424,27 @@ export default function AlbumDetailPage() {
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 mb-2">
-                    {albumData?.startDate && (
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        {new Date(albumData.startDate).toLocaleDateString()}
-                      </p>
-                    )}
+                    <Calendar className="w-4 h-4 text-gray-500" />
                     <button
-                      onClick={() => setIsEditingDate(true)}
-                      className="p-1 text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
-                      title="Change date"
+                      onClick={() => {
+                        // Set the current date before opening editor
+                        if (albumData?.startDate) {
+                          setEditedDate(albumData.startDate);
+                        }
+                        setIsEditingDate(true);
+                      }}
+                      className="text-sm text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 transition-colors"
+                      title="Click to change date"
                     >
-                      <Calendar className="w-4 h-4" />
+                      {albumData?.startDate ? (
+                         new Date(albumData.startDate).toLocaleDateString('en-US', {
+                           year: 'numeric',
+                           month: 'long',
+                           day: 'numeric'
+                         })
+                      ) : "Set date"}
                     </button>
+                    <Edit2 className="w-3 h-3 text-gray-400" />
                   </div>
                 )}
 
@@ -501,7 +454,7 @@ export default function AlbumDetailPage() {
               </div>
 
               <div className="flex gap-2">
-                {selectedPhotos.length > 0 && (
+                {selectedPhotos.length > 0 ? (
                   <>
                     <button
                       onClick={handleRemoveAssets}
@@ -519,98 +472,19 @@ export default function AlbumDetailPage() {
                       Clear
                     </button>
                   </>
-                )}
-                {!showAddPhotos && (
-                  <>
-                    <button
-                      onClick={() => {
-                        setSelectedPhotos([]);
-                        setShowAddPhotos(true);
-                      }}
-                      className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600 
-                        flex items-center gap-2"
-                    >
-                      <Plus className="w-4 h-4" />
-                      <span>Add Photos</span>
-                    </button>
-                    <button
-                      onClick={handleDelete}
-                      className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 
-                        flex items-center gap-2"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      <span>Delete Album</span>
-                    </button>
-                  </>
-                )}
-                {showAddPhotos && (
+                ) : (
                   <button
-                    onClick={() => {
-                      setSelectedPhotos([]);
-                      setShowAddPhotos(false);
-                    }}
-                    className="px-4 py-2 rounded-lg bg-gray-500 text-white hover:bg-gray-600 
+                    onClick={handleDelete}
+                    className="px-4 py-2 rounded-lg bg-red-500 text-white hover:bg-red-600 
                       flex items-center gap-2"
                   >
-                    <X className="w-4 h-4" />
-                    <span>Cancel</span>
+                    <Trash2 className="w-4 h-4" />
+                    <span>Delete Album</span>
                   </button>
                 )}
               </div>
             </div>
           </div>
-
-          {/* Add Photos Modal */}
-          {showAddPhotos && (
-            <div className="bg-white dark:bg-gray-800 rounded-lg p-6 shadow-lg">
-              <h2 className="text-xl font-semibold mb-4">Add Photos to Album</h2>
-              <div className="grid grid-cols-4 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4 max-h-96 overflow-y-auto mb-4">
-                {availablePhotos.map((photo) => (
-                  <div
-                    key={photo.id}
-                    onClick={() => handleSelectPhoto(photo.id)}
-                    className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer
-                      ${
-                        selectedPhotos.includes(photo.id)
-                          ? "ring-2 ring-blue-500"
-                          : ""
-                      }`}
-                  >
-                    <Image
-                      src={photo.url}
-                      alt={photo.title}
-                      fill
-                      className="object-cover"
-                      sizes="(max-width: 640px) 25vw, (max-width: 1024px) 33vw, 20vw"
-                    />
-                    {selectedPhotos.includes(photo.id) && (
-                      <div className="absolute inset-0 bg-blue-500/20" />
-                    )}
-                  </div>
-                ))}
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  onClick={() => {
-                    setShowAddPhotos(false);
-                    setSelectedPhotos([]);
-                  }}
-                  className="px-4 py-2 rounded-lg bg-gray-500 text-white hover:bg-gray-600"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => handleAddAssets(selectedPhotos)}
-                  disabled={selectedPhotos.length === 0}
-                  className="px-4 py-2 rounded-lg bg-blue-500 text-white hover:bg-blue-600
-                    disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  Add {selectedPhotos.length > 0 ? `${selectedPhotos.length} ` : ""}Photo
-                  {selectedPhotos.length !== 1 ? "s" : ""}
-                </button>
-              </div>
-            </div>
-          )}
 
           {/* Loading State */}
           {loading && photosByDate.length === 0 && (
@@ -636,7 +510,7 @@ export default function AlbumDetailPage() {
           )}
 
           {/* Photos Grid */}
-          {!loading && !showAddPhotos && (
+          {!loading && (
             <div className="space-y-8">
               {photosByDate.map((group) => {
                 const datePhotoIds = group.photos.map((photo) => photo.id);

@@ -13,6 +13,7 @@ export default function CreateAlbumModal({
 }) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
+  const [date, setDate] = useState("");
   const [selectedPhotos, setSelectedPhotos] = useState([]);
 
   // Reset form and update selections when modal opens/closes
@@ -24,10 +25,13 @@ export default function CreateAlbumModal({
       ) {
         setSelectedPhotos(preselectedPhotos);
       }
+      // Set default date to today
+      setDate(new Date().toISOString().slice(0, 10));
     } else {
       // Reset form when modal closes
       setTitle("");
       setDescription("");
+      setDate("");
       setSelectedPhotos([]);
     }
   }, [isOpen]); // Only depend on isOpen, not preselectedPhotos
@@ -36,10 +40,13 @@ export default function CreateAlbumModal({
     e.preventDefault();
     onCreateAlbum({
       title,
+      description,
+      date,
       photoIds: selectedPhotos,
     });
     setTitle("");
     setDescription("");
+    setDate("");
     setSelectedPhotos([]);
     onClose();
   };
@@ -96,6 +103,27 @@ export default function CreateAlbumModal({
 
             <div>
               <label
+                htmlFor="date"
+                className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+              >
+                Date
+              </label>
+              <input
+                type="date"
+                id="date"
+                value={date}
+                onChange={(e) => setDate(e.target.value)}
+                required
+                className="w-full px-4 py-2 rounded-lg border border-gray-200 
+                  dark:border-gray-700 dark:bg-gray-700 dark:text-gray-100
+                  focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none
+                  cursor-pointer"
+                onClick={(e) => e.target.showPicker && e.target.showPicker()}
+              />
+            </div>
+
+            <div>
+              <label
                 htmlFor="description"
                 className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
               >
@@ -111,36 +139,6 @@ export default function CreateAlbumModal({
                   focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none"
                 placeholder="Enter album description"
               />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">
-                Select Photos ({selectedPhotos.length} selected)
-              </label>
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4 max-h-60 overflow-y-auto p-1">
-                {Array.isArray(availablePhotos) && availablePhotos.map((photo) => (
-                  <div
-                    key={photo.id}
-                    onClick={() => togglePhotoSelection(photo.id)}
-                    className={`relative aspect-square rounded-lg overflow-hidden cursor-pointer
-                      ${
-                        selectedPhotos.includes(photo.id)
-                          ? "ring-2 ring-blue-500"
-                          : ""
-                      }`}
-                  >
-                    <Image
-                      src={photo.url}
-                      alt={photo.title}
-                      fill
-                      className="object-cover"
-                    />
-                    {selectedPhotos.includes(photo.id) && (
-                      <div className="absolute inset-0 bg-blue-500/20" />
-                    )}
-                  </div>
-                ))}
-              </div>
             </div>
 
             <div className="flex justify-end gap-3">

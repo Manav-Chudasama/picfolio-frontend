@@ -1,5 +1,34 @@
 import { CheckCircle } from "lucide-react";
 
+// Format date from "YYYY-MM-DD" to "14th August 2022"
+function formatDate(dateString) {
+  try {
+    const date = new Date(dateString + "T00:00:00"); // Add time to avoid timezone issues
+    const day = date.getDate();
+    const month = date.toLocaleDateString("en-US", { month: "long" });
+    const year = date.getFullYear();
+
+    // Get ordinal suffix (1st, 2nd, 3rd, 4th, etc.)
+    const getOrdinalSuffix = (n) => {
+      // Special cases: 11th, 12th, 13th
+      if (n >= 11 && n <= 13) {
+        return "th";
+      }
+      // Otherwise, check last digit
+      const lastDigit = n % 10;
+      if (lastDigit === 1) return "st";
+      if (lastDigit === 2) return "nd";
+      if (lastDigit === 3) return "rd";
+      return "th";
+    };
+
+    return `${day}${getOrdinalSuffix(day)} ${month} ${year}`;
+  } catch (error) {
+    // Fallback to original date if parsing fails
+    return dateString;
+  }
+}
+
 export default function DateSection({ 
   date, 
   children, 
@@ -12,7 +41,7 @@ export default function DateSection({
       <div className="sticky top-16 lg:top-0 z-10 bg-gray-50 dark:bg-gray-900 py-4">
         <div className="flex items-center justify-between">
           <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100">
-            {date}
+            {formatDate(date)}
           </h2>
           <button
             onClick={onSelectAll}

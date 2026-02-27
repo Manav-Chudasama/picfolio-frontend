@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
 import Image from "next/image";
-import { Heart, Download, Share2, Trash2, CheckCircle } from "lucide-react";
+import { Heart, Download, Share2, Trash2, CheckCircle, Play } from "lucide-react";
 
 export default function PhotoGrid({
   photos,
@@ -88,10 +88,19 @@ export default function PhotoGrid({
                 src={photo.url}
                 alt={photo.title || "Photo"}
                 fill
-                className={`object-cover transition-transform duration-300
-                  ${isSelected ? "brightness-75" : "group-hover:scale-105"}`}
+                className={`transition-transform duration-300
+                  ${isSelected ? "brightness-75" : "group-hover:scale-105"}
+                  ${photo.isVideo ? "object-contain bg-gray-900" : "object-cover"}`}
                 sizes="(max-width: 640px) 25vw, (max-width: 1024px) 33vw, 20vw"
+                unoptimized={photo.isVideo}
               />
+              
+              {photo.isVideo && (
+                <div className="absolute bottom-2 right-2 z-10 flex items-center gap-1 bg-black/50 px-2 py-1 rounded text-white text-xs font-medium">
+                  <Play className="w-3 h-3 fill-white" />
+                  <span>{photo.duration}</span>
+                </div>
+              )}
             </div>
           </div>
         );

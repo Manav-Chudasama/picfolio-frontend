@@ -9,6 +9,11 @@ import {
   Settings,
   LogOut,
   X,
+  Trash2,
+  Copy,
+  ScanEye,
+  BarChart3,
+  UserCheck,
 } from "lucide-react";
 import { useSession } from "../providers/SessionProvider";
 
@@ -21,6 +26,11 @@ export default function MainLayout({ children }) {
     { icon: Heart, label: "Favorites", href: "/favorites" },
     { icon: Album, label: "Albums", href: "/albums" },
     { icon: Search, label: "Explore", href: "/explore" },
+    { icon: UserCheck, label: "Verifications", href: "/verifications" },
+    { icon: Copy, label: "Duplicates", href: "/duplicates" },
+    { icon: ScanEye, label: "Blurry Images", href: "/blurry" },
+    { icon: Trash2, label: "Bin", href: "/bin" },
+    { icon: BarChart3, label: "Statistics", href: "/statistics" },
     { icon: Settings, label: "Settings", href: "/settings" },
   ];
 
