@@ -1,84 +1,97 @@
 // Backend API Configuration
-export const API_BASE_URL =
-  (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000").replace(/\/+$/, "");
+import { getServerUrl } from "@/utils/serverConfig";
+
+// Get the base URL dynamically from local storage or environment
+const getBaseUrl = () => {
+  // First check local storage (for scanned/manually entered URLs)
+  const savedUrl = getServerUrl();
+  if (savedUrl) {
+    return savedUrl.replace(/\/+$/, "");
+  }
+  
+  // Fallback to environment variable or default
+  return (process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:5000").replace(/\/+$/, "");
+};
+
+export const API_BASE_URL = getBaseUrl();
 
 export const API_ENDPOINTS = {
-  getUsers: () => `${API_BASE_URL}/api/users`,
-  createUser: () => `${API_BASE_URL}/api/user/create`,
-  authUser: () => `${API_BASE_URL}/api/user/auth`,
+  getUsers: () => `${getBaseUrl()}/api/users`,
+  createUser: () => `${getBaseUrl()}/api/user/create`,
+  authUser: () => `${getBaseUrl()}/api/user/auth`,
   renameUser: (username, newUsername) =>
-    `${API_BASE_URL}/api/user/rename/${username}/${newUsername}`,
-  deleteUser: (username) => `${API_BASE_URL}/api/user/delete/${username}`,
-  uploadAsset: () => `${API_BASE_URL}/api/upload`,
-  getPhotosList: () => `${API_BASE_URL}/api/list/general`,
+    `${getBaseUrl()}/api/user/rename/${username}/${newUsername}`,
+  deleteUser: (username) => `${getBaseUrl()}/api/user/delete/${username}`,
+  uploadAsset: () => `${getBaseUrl()}/api/upload`,
+  getPhotosList: () => `${getBaseUrl()}/api/list/general`,
   getAssetDetails: (username, photoId) =>
-    `${API_BASE_URL}/api/details/${username}/${photoId}`,
+    `${getBaseUrl()}/api/details/${username}/${photoId}`,
   getPreview: (username, photoId) =>
-    `${API_BASE_URL}/api/preview/${username}/${photoId}`,
+    `${getBaseUrl()}/api/preview/${username}/${photoId}`,
   getMaster: (username, photoId) =>
-    `${API_BASE_URL}/api/asset/${username}/${photoId}`,
+    `${getBaseUrl()}/api/asset/${username}/${photoId}`,
 
   // Favorites APIs
   toggleLike: (username, assetId) =>
-    `${API_BASE_URL}/api/like/${username}/${assetId}`,
+    `${getBaseUrl()}/api/like/${username}/${assetId}`,
   checkLiked: (username, assetId) =>
-    `${API_BASE_URL}/api/liked/${username}/${assetId}`,
-  searchAssets: () => `${API_BASE_URL}/api/search`,
+    `${getBaseUrl()}/api/liked/${username}/${assetId}`,
+  searchAssets: () => `${getBaseUrl()}/api/search`,
 
   // Faces APIs
-  getFacesList: () => `${API_BASE_URL}/api/list/faces`,
+  getFacesList: () => `${getBaseUrl()}/api/list/faces`,
   getFaceImage: (username, faceId) =>
-    `${API_BASE_URL}/api/face/image/${username}/${faceId}`,
+    `${getBaseUrl()}/api/face/image/${username}/${faceId}`,
   getFaceName: (username, faceId) =>
-    `${API_BASE_URL}/api/face/name/${username}/${faceId}`,
+    `${getBaseUrl()}/api/face/name/${username}/${faceId}`,
   getFaceAssets: (username, faceId) =>
-    `${API_BASE_URL}/api/list/face/${username}/${faceId}`,
+    `${getBaseUrl()}/api/list/face/${username}/${faceId}`,
   renameFace: (username, faceId, name) =>
-    `${API_BASE_URL}/api/face/rename/${username}/${faceId}/${encodeURIComponent(name)}`,
+    `${getBaseUrl()}/api/face/rename/${username}/${faceId}/${encodeURIComponent(name)}`,
   deleteFace: (username, faceId) =>
-    `${API_BASE_URL}/api/face/delete/${username}/${faceId}`,
-  joinFaces: () => `${API_BASE_URL}/api/face/join`,
-  addFaceToPhoto: () => `${API_BASE_URL}/api/face/add`,
-  removeFaceFromPhoto: () => `${API_BASE_URL}/api/face/remove`,
+    `${getBaseUrl()}/api/face/delete/${username}/${faceId}`,
+  joinFaces: () => `${getBaseUrl()}/api/face/join`,
+  addFaceToPhoto: () => `${getBaseUrl()}/api/face/add`,
+  removeFaceFromPhoto: () => `${getBaseUrl()}/api/face/remove`,
   getPendingVerifications: (username) =>
-    `${API_BASE_URL}/api/face/verify/pending/${username}`,
-  updateVerification: () => `${API_BASE_URL}/api/face/verify/update`,
+    `${getBaseUrl()}/api/face/verify/pending/${username}`,
+  updateVerification: () => `${getBaseUrl()}/api/face/verify/update`,
 
   // Auto Albums APIs
-  getAutoAlbumsList: () => `${API_BASE_URL}/api/list/autoalbums`,
+  getAutoAlbumsList: () => `${getBaseUrl()}/api/list/autoalbums`,
   getAutoAlbumCover: (username, autoAlbumName) =>
-    `${API_BASE_URL}/api/autoalbum/${username}/${encodeURIComponent(autoAlbumName)}`,
-  getAutoAlbumAssets: () => `${API_BASE_URL}/api/list/autoalbums`,
+    `${getBaseUrl()}/api/autoalbum/${username}/${encodeURIComponent(autoAlbumName)}`,
+  getAutoAlbumAssets: () => `${getBaseUrl()}/api/list/autoalbums`,
 
   // Album APIs
-  listAlbums: () => `${API_BASE_URL}/api/list/albums`,
-  createAlbum: () => `${API_BASE_URL}/api/album/create`,
-  addAssetsToAlbum: () => `${API_BASE_URL}/api/album/add`,
-  removeAssetsFromAlbum: () => `${API_BASE_URL}/api/album/remove`,
-  deleteAlbum: () => `${API_BASE_URL}/api/album/delete`,
+  listAlbums: () => `${getBaseUrl()}/api/list/albums`,
+  createAlbum: () => `${getBaseUrl()}/api/album/create`,
+  addAssetsToAlbum: () => `${getBaseUrl()}/api/album/add`,
+  removeAssetsFromAlbum: () => `${getBaseUrl()}/api/album/remove`,
+  deleteAlbum: () => `${getBaseUrl()}/api/album/delete`,
   getAlbumAssets: (username, albumId) =>
-    `${API_BASE_URL}/api/album/${username}/${albumId}`,
-  renameAlbum: () => `${API_BASE_URL}/api/album/rename`,
-  redateAlbum: () => `${API_BASE_URL}/api/album/redate`,
+    `${getBaseUrl()}/api/album/${username}/${albumId}`,
+  renameAlbum: () => `${getBaseUrl()}/api/album/rename`,
+  redateAlbum: () => `${getBaseUrl()}/api/album/redate`,
 
   // Delete/Bin APIs
   deleteAssets: (username, ids) =>
-    `${API_BASE_URL}/api/delete/${username}/${ids}`,
-  getDeletedAssets: () => `${API_BASE_URL}/api/list/deleted`,
-  restoreAssets: () => `${API_BASE_URL}/api/restore`,
+    `${getBaseUrl()}/api/delete/${username}/${ids}`,
+  getDeletedAssets: () => `${getBaseUrl()}/api/list/deleted`,
+  restoreAssets: () => `${getBaseUrl()}/api/restore`,
 
   // Duplicates API
-  getDuplicates: () => `${API_BASE_URL}/api/list/duplicate`,
+  getDuplicates: () => `${getBaseUrl()}/api/list/duplicate`,
 
   // Statistics API
-  getStatistics: () => `${API_BASE_URL}/api/stats`,
+  getStatistics: () => `${getBaseUrl()}/api/stats`,
 
   // Redate API
-  redateAssets: () => `${API_BASE_URL}/api/redate`,
+  redateAssets: () => `${getBaseUrl()}/api/redate`,
 
   // Location API
-  updateLocation: () => `${API_BASE_URL}/api/location`,
+  updateLocation: () => `${getBaseUrl()}/api/location`,
 
   // Pending Assets API
-  getPendingCount: (username) => `${API_BASE_URL}/api/pending/${username}`,
+  getPendingCount: (username) => `${getBaseUrl()}/api/pending/${username}`,
 };

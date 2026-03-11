@@ -2,29 +2,15 @@
 const nextConfig = {
   images: {
     remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: 'images.unsplash.com',
-        port: '',
-        pathname: '/**',
-      },
+      // Allow any hostname and port (needed for dynamic local server IPs)
       {
         protocol: 'http',
-        hostname: 'localhost',
-        port: '7251',
+        hostname: '**',
         pathname: '/**',
       },
       {
         protocol: 'https',
-        hostname: '4be6edf44820.ngrok-free.app',
-        port: '',
-        pathname: '/**',
-      },
-
-      {
-        protocol: 'https',
-        hostname: 'source.unsplash.com',
-        port: '',
+        hostname: '**',
         pathname: '/**',
       },
     ],

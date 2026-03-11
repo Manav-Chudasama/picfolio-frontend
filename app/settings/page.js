@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import MainLayout from "@/components/layout/MainLayout";
 import ProtectedRoute from "@/components/common/ProtectedRoute";
 import { useSession } from "@/components/providers/SessionProvider";
 import { API_ENDPOINTS } from "@/config/api";
 import { useRouter } from "next/navigation";
-import { Trash2, AlertTriangle } from "lucide-react";
+import { Trash2, AlertTriangle, Server, ExternalLink } from "lucide-react";
+import { getServerUrl, clearServerUrl } from "@/utils/serverConfig";
 
 export default function SettingsPage() {
   const { currentUser, logout } = useSession();
@@ -14,6 +15,21 @@ export default function SettingsPage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
   const [error, setError] = useState("");
+  const [serverUrl, setServerUrl] = useState("");
+
+  useEffect(() => {
+    // Get current server URL
+    const url = getServerUrl();
+    if (url) {
+      setServerUrl(url);
+    }
+  }, []);
+
+  const handleChangeServer = () => {
+    // Clear server URL and redirect to setup
+    clearServerUrl();
+    router.push("/setup");
+  };
 
   const handleDeleteUser = async () => {
     if (!currentUser) return;
@@ -52,6 +68,51 @@ export default function SettingsPage() {
             <p className="text-gray-600 dark:text-gray-400 mt-2">
               Manage your account settings
             </p>
+          </div>
+
+          {/* Server Configuration Section */}
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
+            <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+              <h2 className="text-xl font-semibold text-gray-800 dark:text-gray-100 flex items-center gap-2">
+                <Server className="w-5 h-5" />
+                Server Configuration
+              </h2>
+            </div>
+            
+            <div className="p-6 space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Current Server
+                </label>
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-900 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <code className="flex-1 text-sm font-mono text-gray-900 dark:text-gray-100">
+                    {serverUrl || "Not configured"}
+                  </code>
+                  {serverUrl && (
+                    <a
+                      href={serverUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                    >
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  )}
+                </div>
+              </div>
+
+              <button
+                onClick={handleChangeServer}
+                className="flex items-center gap-2 px-4 py-2 bg-blue-50 text-blue-600 rounded-lg hover:bg-blue-100 border border-blue-200 transition-colors dark:bg-blue-900/20 dark:border-blue-800 dark:text-blue-400 dark:hover:bg-blue-900/30"
+              >
+                <Server className="w-4 h-4" />
+                Change Server
+              </button>
+              
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                This will disconnect you from the current server and allow you to scan a new QR code or enter a different server address.
+              </p>
+            </div>
           </div>
 
           {/* Account Section */}

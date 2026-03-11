@@ -309,7 +309,15 @@ export default function StatisticsPage() {
                     </h2>
                   </div>
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    {stats.top_locations.map(([location, count], index) => (
+                    {stats.top_locations.map((item, index) => {
+                      // Handle both tuple [location, count] and object {location, count} formats
+                      const location = Array.isArray(item)
+                        ? item[0]
+                        : item.location ?? item.name ?? Object.keys(item)[0];
+                      const count = Array.isArray(item)
+                        ? item[1]
+                        : item.count ?? item.value ?? Object.values(item)[0];
+                      return (
                       <div
                         key={index}
                         className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700 rounded-lg"
@@ -318,10 +326,11 @@ export default function StatisticsPage() {
                           {location}
                         </span>
                         <span className="text-gray-800 dark:text-gray-100 font-semibold ml-2">
-                          {count.toLocaleString()}
+                          {typeof count === "number" ? count.toLocaleString() : count}
                         </span>
                       </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
               )}
